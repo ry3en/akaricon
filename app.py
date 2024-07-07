@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Configuración de conexión a la base de datos
 DATABASE_CONFIG = {
     'server': 'practicasuni.database.windows.net',
-    'database': 'luxaris',
+    'database': 'akari',
     'username': 'admon',
     'password': 'Abeja123!',
     'driver': '{ODBC Driver 17 for SQL Server}',
