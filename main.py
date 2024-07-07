@@ -29,6 +29,11 @@ def get_db_connection():
     )
     return conn
 
+# Ejemplo de un endpoint para verificar que la API está corriendo
+@app.route('/')
+def index():
+    return "API is running!"
+
 # Create a provider
 @app.route('/providers', methods=['POST'])
 def create_provider():
