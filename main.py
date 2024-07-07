@@ -9,14 +9,14 @@ app = Flask(__name__)
 # Configuración de conexión a la base de datos
 DATABASE_CONFIG = {
     'server': 'practicasuni.database.windows.net',
-    'database': 'luxaris',
+    'database': 'akari',
     'username': 'admon',
-    'password': '########',
+    'password': 'Abeja123!',
     'driver': '{ODBC Driver 17 for SQL Server}',
 }
 
 # Configura la clave secreta para JWT
-app.config['JWT_SECRET_KEY'] = '###############'
+app.config['JWT_SECRET_KEY'] = 'b16191c9589984e86de2d8cd044e49f8'
 jwt = JWTManager(app)
 
 def get_db_connection():
