@@ -9,7 +9,7 @@ app = Flask(__name__)
 # Configuración de conexión a la base de datos
 DATABASE_CONFIG = {
     'server': 'practicasuni.database.windows.net',
-    'database': 'akari',
+    'database': 'luxaris',
     'username': 'admon',
     'password': 'Abeja123!',
     'driver': '{ODBC Driver 17 for SQL Server}',
@@ -29,6 +29,44 @@ def get_db_connection():
     )
     return conn
 
+# Create a provider
+@app.route('/providers', methods=['POST'])
+def create_provider():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO Providers (Name, Address, Contact_info) VALUES (?, ?, ?)"
+            cursor.execute(query, (
+                data['Name'],
+                data['Address'],
+                data['Contact_info']
+            ))
+            conn.commit()
+        return jsonify({'status': 'Provider created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Create a client
+@app.route('/clients', methods=['POST'])
+def create_client():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO Clients (Name, Address, Contact_info) VALUES (?, ?, ?)"
+            cursor.execute(query, (
+                data['Name'],
+                data['Address'],
+                data['Contact_info']
+            ))
+            conn.commit()
+        return jsonify({'status': 'Client created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Register a new user
 @app.route('/register', methods=['POST'])
 def register():
     data = request.json
@@ -53,6 +91,7 @@ def register():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# User login
 @app.route('/login', methods=['POST'])
 def login():
     data = request.json
@@ -77,6 +116,7 @@ def login():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Create a product
 @app.route('/products', methods=['POST'])
 def create_product():
     data = request.json
@@ -100,6 +140,7 @@ def create_product():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Update a product
 @app.route('/products', methods=['PUT'])
 def update_product():
     data = request.json
@@ -125,6 +166,7 @@ def update_product():
         conn.rollback()
         return jsonify({'error': str(e)}), 500
 
+# Delete a product
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
     try:
@@ -138,6 +180,7 @@ def delete_product(product_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Get products
 @app.route('/products', methods=['GET'])
 def get_products():
     category_id = request.args.get('category')
@@ -159,6 +202,7 @@ def get_products():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Get categories
 @app.route('/categories', methods=['GET'])
 def get_categories():
     try:
@@ -170,6 +214,7 @@ def get_categories():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# Get brands
 @app.route('/brands', methods=['GET'])
 def get_brands():
     try:
@@ -179,6 +224,112 @@ def get_brands():
             brands = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
         return jsonify(brands)
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get users
+@app.route('/users', methods=['GET'])
+def get_users():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Users")
+            users = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+        return jsonify(users)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get clients
+@app.route('/clients', methods=['GET'])
+def get_clients():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Clients")
+            clients = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+        return jsonify(clients)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get providers
+@app.route('/providers', methods=['GET'])
+def get_providers():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Providers")
+            providers = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+        return jsonify(providers)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Create cart transaction
+@app.route('/carttransactions', methods=['POST'])
+def create_cart_transaction():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Unit_price, Total_amount, Payment_method, Status, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            cursor.execute(query, (
+                data['ID_User'],
+                data['ID_Product'],
+                data['Quantity'],
+                data['Unit_price'],
+                data['Total_amount'],
+                data['Payment_method'],
+                data['Status'],
+                data['Order_date'],
+                data['Order_status']
+            ))
+            conn.commit()
+        return jsonify({'status': 'Cart transaction created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get cart transactions
+@app.route('/carttransactions', methods=['GET'])
+def get_cart_transactions():
+    user_id = request.args.get('user')
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            if user_id:
+                query = "SELECT * FROM CartTransactions WHERE ID_User = ?"
+                cursor.execute(query, (user_id,))
+            else:
+                query = "SELECT * FROM CartTransactions"
+                cursor.execute(query)
+            transactions = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+        return jsonify(transactions)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Update cart transaction
+@app.route('/carttransactions', methods=['PUT'])
+def update_cart_transaction():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE CartTransactions 
+                SET Quantity = ?, Unit_price = ?, Total_amount = ?, Payment_method = ?, Status = ?, Order_status = ?
+                WHERE ID_Transaction = ?
+            """, (
+                data['Quantity'],
+                data['Unit_price'],
+                data['Total_amount'],
+                data['Payment_method'],
+                data['Status'],
+                data['Order_status'],
+                data['ID_Transaction']
+            ))
+            conn.commit()
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Cart transaction not found'}), 404
+            return jsonify({'status': 'Cart transaction updated'}), 200
+    except Exception as e:
+        conn.rollback()
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
