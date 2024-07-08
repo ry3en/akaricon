@@ -69,6 +69,23 @@ def create_client():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
+@app.route('/categories/<int:category_id>', methods=['GET'])
+def get_category_name(category_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "SELECT name FROM Categories WHERE ID_Category = ?"
+            cursor.execute(query, (category_id,))
+            category = cursor.fetchone()
+            if category:
+                return jsonify({'name': category[0]})
+            else:
+                return jsonify({'error': 'Category not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # Register a new user
 @app.route('/register', methods=['POST'])
 def register():
@@ -268,6 +285,18 @@ def create_cart_transaction():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
+            # Check current stock
+            cursor.execute("SELECT Quantity FROM Products WHERE ID_Product = ?", (data['ID_Product'],))
+            product = cursor.fetchone()
+            if product is None:
+                return jsonify({'error': 'Product not found'}), 404
+
+            current_quantity = product[0]
+            new_quantity = current_quantity - data['Quantity']
+
+            if new_quantity < 0:
+                return jsonify({'error': 'Insufficient stock'}), 400
+
             query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Unit_price, Total_amount, Payment_method, Abono, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['ID_User'],
@@ -281,10 +310,13 @@ def create_cart_transaction():
                 data['Order_date'],
                 data['Order_status']
             ))
+            # Update product quantity
+            cursor.execute("UPDATE Products SET Quantity = ? WHERE ID_Product = ?", (new_quantity, data['ID_Product']))
             conn.commit()
-        return jsonify({'status': 'Cart transaction created'}), 201
+        return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
@@ -332,6 +364,71 @@ def update_cart_transaction():
             return jsonify({'status': 'Cart transaction updated'}), 200
     except Exception as e:
         conn.rollback()
+        return jsonify({'error': str(e)}), 500
+
+# Create a notification
+@app.route('/notifications', methods=['POST'])
+def create_notification():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO Notifications (ID_Product, Min_Stock) VALUES (?, ?)"
+            cursor.execute(query, (
+                data['ID_Product'],
+                data['Min_Stock']
+            ))
+            conn.commit()
+        return jsonify({'status': 'Notification created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get notifications
+@app.route('/notifications', methods=['GET'])
+def get_notifications():
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("SELECT * FROM Notifications")
+            notifications = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+        return jsonify(notifications)
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Update a notification
+@app.route('/notifications/<int:notification_id>', methods=['PUT'])
+def update_notification(notification_id):
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("""
+                UPDATE Notifications
+                SET Min_Stock = ?
+                WHERE ID_Notification = ?
+            """, (
+                data['Min_Stock'],
+                notification_id
+            ))
+            conn.commit()
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Notification not found'}), 404
+            return jsonify({'status': 'Notification updated'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Delete a notification
+@app.route('/notifications/<int:notification_id>', methods=['DELETE'])
+def delete_notification(notification_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            cursor.execute("DELETE FROM Notifications WHERE ID_Notification = ?", (notification_id,))
+            conn.commit()
+            if cursor.rowcount == 0:
+                return jsonify({'error': 'Notification not found'}), 404
+            return jsonify({'status': f'Notification with ID {notification_id} deleted successfully'}), 200
+    except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
