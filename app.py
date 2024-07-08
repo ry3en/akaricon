@@ -446,74 +446,45 @@ def delete_notification(notification_id):
         return jsonify({'error': str(e)}), 500
 
 # Create a ticket
+# Ejemplo de endpoint en Flask para generar un ticket
 @app.route('/tickets', methods=['POST'])
 def create_ticket():
     data = request.json
+    id_client = data.get('ID_client')
+    id_user = data.get('ID_user')
+    id_cart = data.get('ID_Cart')
+    id_code = data.get('ID_Code')
+    issue_details = data.get('Issue_details')
+
+    pre_price = 0
+    final_price = 0
+    discount = 0
+
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
-            # Insertar el ticket
-            query = """
-                INSERT INTO Tickets (ID_client, ID_user, Issue_details, ID_Code, Final_Price, Created_at)
-                VALUES (?, ?, ?, ?, ?, GETDATE())
-            """
-            cursor.execute(query, (
-                data['ID_client'],
-                data['ID_user'],
-                data['Issue_details'],
-                data['ID_Code'],
-                data['Final_Price']
-            ))
+            # Calcular Pre_Price basado en los elementos del carrito
+            cursor.execute("SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_Cart = ?", (id_cart,))
+            pre_price = cursor.fetchone()[0]
+            final_price = pre_price  # Inicialmente, Final_Price es igual a Pre_Price
 
-            # Obtener el ID del nuevo ticket (ID_Cart)
-            ticket_id = cursor.execute("SELECT @@IDENTITY AS ID").fetchone()[0]
+            # Si se proporciona un código promocional, aplicar el descuento
+            if id_code:
+                cursor.execute("SELECT Discount FROM PromotionalCodes WHERE ID_Code = ?", (id_code,))
+                discount = cursor.fetchone()[0]
+                final_price = pre_price - (pre_price * (discount / 100))
 
-            # Actualizar los CartTransactions con el ID_Cart del nuevo ticket
-            cursor.execute("UPDATE CartTransactions SET ID_Cart = ? WHERE ID_User = ? AND ID_Cart IS NULL", (ticket_id, data['ID_user']))
-
+            # Insertar el ticket en la base de datos
+            cursor.execute("""
+                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Pre_Price, Final_Price)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (id_client, id_user, id_cart, id_code, issue_details, pre_price, final_price))
             conn.commit()
-        return jsonify({'status': 'Ticket created', 'ticket_id': ticket_id}), 201
+
+            return jsonify({"ID_ticket": cursor.lastrowid}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-# Get a ticket by ID
-@app.route('/tickets/<int:ticket_id>', methods=['GET'])
-def get_ticket(ticket_id):
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            query = """
-                SELECT T.*, C.Name AS Client_Name, U.Username AS User_Name
-                FROM Tickets T
-                JOIN Clients C ON T.ID_client = C.ID_client
-                JOIN Users U ON T.ID_user = U.ID_user
-                WHERE T.ID_ticket = ?
-            """
-            cursor.execute(query, (ticket_id,))
-            ticket = cursor.fetchone()
-            if ticket:
-                ticket_data = dict(zip([column[0] for column in cursor.description], ticket))
-
-                # Obtener los detalles de las transacciones del carrito
-                query = """
-                    SELECT CT.*, P.Product_name
-                    FROM CartTransactions CT
-                    JOIN Products P ON CT.ID_Product = P.ID_product
-                    WHERE CT.ID_Cart = ?
-                """
-                cursor.execute(query, (ticket_id,))
-                transactions = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
-
-                ticket_data['transactions'] = transactions
-
-                return jsonify(ticket_data)
-            else:
-                return jsonify({'error': 'Ticket not found'}), 404
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
