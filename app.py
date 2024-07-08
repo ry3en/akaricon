@@ -126,7 +126,7 @@ def create_product():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            query = "INSERT INTO Products (Product_name, Quantity, Color, SKU, Ubi, Price_Sell, Price_Buy, Image_URL, ID_brand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO Products (Product_name, Quantity, Color, SKU, Ubi, Price_Sell, Price_Buy, Image_URL) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['Product_name'],
                 data['Quantity'],
@@ -135,8 +135,7 @@ def create_product():
                 data['Ubi'],
                 data['Price_Sell'],
                 data['Price_Buy'],
-                data['Image_URL'],
-                data['ID_brand']
+                data['Image_URL']
             ))
             conn.commit()
         return jsonify({'status': 'Product created'}), 201
@@ -152,7 +151,7 @@ def update_product():
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE Products 
-                SET Product_name = ?, Quantity = ?, Color = ?, SKU = ?, Ubi = ?, Price_Sell = ?, Price_Buy = ?, Image_URL = ?, ID_brand = ?
+                SET Product_name = ?, Quantity = ?, Color = ?, SKU = ?, Ubi = ?, Price_Sell = ?, Price_Buy = ?, Image_URL = ?
                 WHERE ID_Product = ?
             """, (
                 data['Product_name'],
@@ -163,7 +162,6 @@ def update_product():
                 data['Price_Sell'],
                 data['Price_Buy'],
                 data['Image_URL'],
-                data['ID_brand'],
                 data['ID_Product']
             ))
             conn.commit()
@@ -224,18 +222,6 @@ def get_categories():
             cursor.execute("SELECT * FROM Categories")
             categories = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
         return jsonify(categories)
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-# Get brands
-@app.route('/brands', methods=['GET'])
-def get_brands():
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT * FROM Brands")
-            brands = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
-        return jsonify(brands)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
