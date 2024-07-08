@@ -309,7 +309,6 @@ def get_providers():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 # Create cart transaction
 @app.route('/carttransactions', methods=['POST'])
 def create_cart_transaction():
@@ -317,6 +316,11 @@ def create_cart_transaction():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
+
+            # Verificar si ID_Product está presente en la solicitud
+            if 'ID_Product' not in data:
+                return jsonify({'error': 'ID_Product no está presente en la solicitud.'}), 400
+
             # Check current stock
             cursor.execute("SELECT Quantity FROM Products WHERE ID_Product = ?", (data['ID_Product'],))
             product = cursor.fetchone()
@@ -340,12 +344,14 @@ def create_cart_transaction():
                 data['Order_date'],
                 data['Order_status']
             ))
+
             # Update product quantity
             cursor.execute("UPDATE Products SET Quantity = ? WHERE ID_Product = ?", (new_quantity, data['ID_Product']))
             conn.commit()
         return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 # Get cart transactions
@@ -464,7 +470,6 @@ def delete_notification(notification_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
 # Create a ticket
 @app.route('/tickets', methods=['POST'])
 def create_ticket():
@@ -499,11 +504,15 @@ def create_ticket():
                 INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Prev_Price, Final_Price)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (id_client, id_user, id_cart, id_code, issue_details, pre_price, final_price))
+            cursor.execute("SELECT SCOPE_IDENTITY()")
+            ticket_id = cursor.fetchone()[0]
             conn.commit()
 
-            return jsonify({"ID_ticket": cursor.lastrowid}), 201
+            return jsonify({"ID_ticket": ticket_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 
 if __name__ == '__main__':
