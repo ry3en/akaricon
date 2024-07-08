@@ -19,6 +19,7 @@ DATABASE_CONFIG = {
 app.config['JWT_SECRET_KEY'] = 'b16191c9589984e86de2d8cd044e49f8'
 jwt = JWTManager(app)
 
+
 def get_db_connection():
     conn = pyodbc.connect(
         f"DRIVER={DATABASE_CONFIG['driver']};"
@@ -29,9 +30,11 @@ def get_db_connection():
     )
     return conn
 
+
 @app.route('/')
 def index():
     return "API is running!"
+
 
 # Create a provider
 @app.route('/providers', methods=['POST'])
@@ -50,6 +53,7 @@ def create_provider():
         return jsonify({'status': 'Provider created'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Create a client
 @app.route('/clients', methods=['POST'])
@@ -111,6 +115,7 @@ def register():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # User login
 @app.route('/login', methods=['POST'])
 def login():
@@ -129,12 +134,14 @@ def login():
 
             if user and check_password_hash(user.Password, password):
                 access_token = create_access_token(identity=username, expires_delta=timedelta(days=1))
-                data = {"access_token": access_token, "Username": username, "User_type": user.User_type, "ID_user": user.ID_user}
+                data = {"access_token": access_token, "Username": username, "User_type": user.User_type,
+                        "ID_user": user.ID_user}
                 return jsonify(data)
             else:
                 return jsonify({"msg": "Bad username or password"}), 401
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Create a product
 @app.route('/products', methods=['POST'])
@@ -158,6 +165,7 @@ def create_product():
         return jsonify({'status': 'Product created'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 @app.route('/productcategory', methods=['POST'])
 def add_product_category():
@@ -206,6 +214,7 @@ def update_product():
         conn.rollback()
         return jsonify({'error': str(e)}), 500
 
+
 # Delete a product
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
@@ -219,6 +228,7 @@ def delete_product(product_id):
             return jsonify({'status': f'Product with ID {product_id} deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Get products
 @app.route('/products', methods=['GET'])
@@ -247,6 +257,7 @@ def get_products():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Get categories
 @app.route('/categories', methods=['GET'])
 def get_categories():
@@ -258,6 +269,7 @@ def get_categories():
         return jsonify(categories)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Get users
 @app.route('/users', methods=['GET'])
@@ -271,6 +283,7 @@ def get_users():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Get clients
 @app.route('/clients', methods=['GET'])
 def get_clients():
@@ -283,6 +296,7 @@ def get_clients():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Get providers
 @app.route('/providers', methods=['GET'])
 def get_providers():
@@ -294,6 +308,7 @@ def get_providers():
         return jsonify(providers)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Create cart transaction
 @app.route('/carttransactions', methods=['POST'])
@@ -331,6 +346,7 @@ def create_cart_transaction():
         return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
@@ -397,6 +413,7 @@ def create_notification():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Get notifications
 @app.route('/notifications', methods=['GET'])
 def get_notifications():
@@ -408,6 +425,7 @@ def get_notifications():
         return jsonify(notifications)
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Update a notification
 @app.route('/notifications/<int:notification_id>', methods=['PUT'])
@@ -431,6 +449,7 @@ def update_notification(notification_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Delete a notification
 @app.route('/notifications/<int:notification_id>', methods=['DELETE'])
 def delete_notification(notification_id):
@@ -445,8 +464,8 @@ def delete_notification(notification_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Create a ticket
-# Ejemplo de endpoint en Flask para generar un ticket
 @app.route('/tickets', methods=['POST'])
 def create_ticket():
     data = request.json
@@ -477,7 +496,7 @@ def create_ticket():
 
             # Insertar el ticket en la base de datos
             cursor.execute("""
-                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Pre_Price, Final_Price)
+                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Prev_Price, Final_Price)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
             """, (id_client, id_user, id_cart, id_code, issue_details, pre_price, final_price))
             conn.commit()
@@ -485,6 +504,7 @@ def create_ticket():
             return jsonify({"ID_ticket": cursor.lastrowid}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
