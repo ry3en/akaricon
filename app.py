@@ -159,6 +159,23 @@ def create_product():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@app.route('/productcategory', methods=['POST'])
+def add_product_category():
+    data = request.json
+    product_id = data.get('ID_Product')
+    category_id = data.get('ID_Category')
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO ProductCategories (ID_Product, ID_Category) VALUES (?, ?)"
+            cursor.execute(query, (product_id, category_id))
+            conn.commit()
+        return jsonify({'status': 'Category added to product'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # Update a product
 @app.route('/products', methods=['PUT'])
 def update_product():
@@ -297,15 +314,13 @@ def create_cart_transaction():
             if new_quantity < 0:
                 return jsonify({'error': 'Insufficient stock'}), 400
 
-            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Unit_price, Total_amount, Payment_method, Abono, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Total_amount, Payment_method, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['ID_User'],
                 data['ID_Product'],
                 data['Quantity'],
-                data['Unit_price'],
                 data['Total_amount'],
                 data['Payment_method'],
-                data['Abono'],
                 data['Added_Date'],
                 data['Order_date'],
                 data['Order_status']
@@ -316,7 +331,6 @@ def create_cart_transaction():
         return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
@@ -336,6 +350,7 @@ def get_cart_transactions():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Update cart transaction
 @app.route('/carttransactions', methods=['PUT'])
 def update_cart_transaction():
@@ -345,14 +360,12 @@ def update_cart_transaction():
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE CartTransactions 
-                SET Quantity = ?, Unit_price = ?, Total_amount = ?, Payment_method = ?, Abono = ?, Added_Date = ?, Order_date = ?, Order_status = ?
+                SET Quantity = ?, Total_amount = ?, Payment_method = ?, Added_Date = ?, Order_date = ?, Order_status = ?
                 WHERE ID_Transaction = ?
             """, (
                 data['Quantity'],
-                data['Unit_price'],
                 data['Total_amount'],
                 data['Payment_method'],
-                data['Abono'],
                 data['Added_Date'],
                 data['Order_date'],
                 data['Order_status'],
@@ -365,6 +378,7 @@ def update_cart_transaction():
     except Exception as e:
         conn.rollback()
         return jsonify({'error': str(e)}), 500
+
 
 # Create a notification
 @app.route('/notifications', methods=['POST'])
@@ -430,6 +444,76 @@ def delete_notification(notification_id):
             return jsonify({'status': f'Notification with ID {notification_id} deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+# Create a ticket
+@app.route('/tickets', methods=['POST'])
+def create_ticket():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Insertar el ticket
+            query = """
+                INSERT INTO Tickets (ID_client, ID_user, Issue_details, ID_Code, Final_Price, Created_at)
+                VALUES (?, ?, ?, ?, ?, GETDATE())
+            """
+            cursor.execute(query, (
+                data['ID_client'],
+                data['ID_user'],
+                data['Issue_details'],
+                data['ID_Code'],
+                data['Final_Price']
+            ))
+
+            # Obtener el ID del nuevo ticket (ID_Cart)
+            ticket_id = cursor.execute("SELECT @@IDENTITY AS ID").fetchone()[0]
+
+            # Actualizar los CartTransactions con el ID_Cart del nuevo ticket
+            cursor.execute("UPDATE CartTransactions SET ID_Cart = ? WHERE ID_User = ? AND ID_Cart IS NULL", (ticket_id, data['ID_user']))
+
+            conn.commit()
+        return jsonify({'status': 'Ticket created', 'ticket_id': ticket_id}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+# Get a ticket by ID
+@app.route('/tickets/<int:ticket_id>', methods=['GET'])
+def get_ticket(ticket_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = """
+                SELECT T.*, C.Name AS Client_Name, U.Username AS User_Name
+                FROM Tickets T
+                JOIN Clients C ON T.ID_client = C.ID_client
+                JOIN Users U ON T.ID_user = U.ID_user
+                WHERE T.ID_ticket = ?
+            """
+            cursor.execute(query, (ticket_id,))
+            ticket = cursor.fetchone()
+            if ticket:
+                ticket_data = dict(zip([column[0] for column in cursor.description], ticket))
+
+                # Obtener los detalles de las transacciones del carrito
+                query = """
+                    SELECT CT.*, P.Product_name
+                    FROM CartTransactions CT
+                    JOIN Products P ON CT.ID_Product = P.ID_product
+                    WHERE CT.ID_Cart = ?
+                """
+                cursor.execute(query, (ticket_id,))
+                transactions = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+
+                ticket_data['transactions'] = transactions
+
+                return jsonify(ticket_data)
+            else:
+                return jsonify({'error': 'Ticket not found'}), 404
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
