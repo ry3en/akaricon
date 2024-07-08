@@ -185,8 +185,8 @@ def add_product_category():
 
 
 # Update a product
-@app.route('/products', methods=['PUT'])
-def update_product():
+@app.route('/products/<int:product_id>', methods=['PUT'])
+def update_product(product_id):
     data = request.json
     try:
         with get_db_connection() as conn:
@@ -204,15 +204,15 @@ def update_product():
                 data['Price_Sell'],
                 data['Price_Buy'],
                 data['Image_URL'],
-                data['ID_Product']
+                product_id
             ))
             conn.commit()
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Product not found'}), 404
             return jsonify({'status': 'Product updated'}), 200
     except Exception as e:
-        conn.rollback()
         return jsonify({'error': str(e)}), 500
+
 
 
 # Delete a product
@@ -506,14 +506,19 @@ def create_ticket():
             """, (id_client, id_user, id_cart, id_code, issue_details, pre_price, final_price))
             cursor.execute("SELECT SCOPE_IDENTITY()")
             ticket_id = cursor.fetchone()[0]
+
+            # Actualizar las transacciones del carrito para asociarse con el ticket
+            cursor.execute("""
+                UPDATE CartTransactions
+                SET ID_Ticket = ?
+                WHERE ID_Cart = ?
+            """, (ticket_id, id_cart))
+
             conn.commit()
 
             return jsonify({"ID_ticket": ticket_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
