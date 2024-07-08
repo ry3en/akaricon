@@ -29,7 +29,6 @@ def get_db_connection():
     )
     return conn
 
-# Ejemplo de un endpoint para verificar que la API está corriendo
 @app.route('/')
 def index():
     return "API is running!"
@@ -69,7 +68,6 @@ def create_client():
         return jsonify({'status': 'Client created'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
 
 # Register a new user
 @app.route('/register', methods=['POST'])
@@ -128,17 +126,17 @@ def create_product():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            query = "INSERT INTO Products (Product_name, ID_Category, Barcode, SKU, Image_URL, PriceBuy, PriceBuyMX, Quantity, PriceSell) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO Products (Product_name, Quantity, Color, SKU, Ubi, Price_Sell, Price_Buy, Image_URL, ID_brand) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['Product_name'],
-                data['ID_Category'],
-                data['Barcode'],
-                data['SKU'],
-                data['Image_URL'],
-                data['PriceBuy'],
-                data['PriceBuyMX'],
                 data['Quantity'],
-                data['PriceSell']
+                data['Color'],
+                data['SKU'],
+                data['Ubi'],
+                data['Price_Sell'],
+                data['Price_Buy'],
+                data['Image_URL'],
+                data['ID_brand']
             ))
             conn.commit()
         return jsonify({'status': 'Product created'}), 201
@@ -154,13 +152,18 @@ def update_product():
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE Products 
-                SET Product_name = ?, Image_URL = ?, Quantity = ?, PriceSell = ?
+                SET Product_name = ?, Quantity = ?, Color = ?, SKU = ?, Ubi = ?, Price_Sell = ?, Price_Buy = ?, Image_URL = ?, ID_brand = ?
                 WHERE ID_Product = ?
             """, (
                 data['Product_name'],
-                data['Image_URL'],
                 data['Quantity'],
-                data['PriceSell'],
+                data['Color'],
+                data['SKU'],
+                data['Ubi'],
+                data['Price_Sell'],
+                data['Price_Buy'],
+                data['Image_URL'],
+                data['ID_brand'],
                 data['ID_Product']
             ))
             conn.commit()
@@ -197,7 +200,12 @@ def get_products():
                 query = "SELECT * FROM Products WHERE ID_Product = ?"
                 cursor.execute(query, (product_id,))
             elif category_id:
-                query = "SELECT * FROM Products WHERE ID_Category = ?"
+                query = """
+                    SELECT P.* 
+                    FROM Products P
+                    JOIN ProductCategories PC ON P.ID_product = PC.ID_Product
+                    WHERE PC.ID_Category = ?
+                """
                 cursor.execute(query, (category_id,))
             else:
                 query = "SELECT * FROM Products"
@@ -274,7 +282,7 @@ def create_cart_transaction():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Unit_price, Total_amount, Payment_method, Status, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Unit_price, Total_amount, Payment_method, Abono, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['ID_User'],
                 data['ID_Product'],
@@ -282,7 +290,8 @@ def create_cart_transaction():
                 data['Unit_price'],
                 data['Total_amount'],
                 data['Payment_method'],
-                data['Status'],
+                data['Abono'],
+                data['Added_Date'],
                 data['Order_date'],
                 data['Order_status']
             ))
@@ -318,14 +327,16 @@ def update_cart_transaction():
             cursor = conn.cursor()
             cursor.execute("""
                 UPDATE CartTransactions 
-                SET Quantity = ?, Unit_price = ?, Total_amount = ?, Payment_method = ?, Status = ?, Order_status = ?
+                SET Quantity = ?, Unit_price = ?, Total_amount = ?, Payment_method = ?, Abono = ?, Added_Date = ?, Order_date = ?, Order_status = ?
                 WHERE ID_Transaction = ?
             """, (
                 data['Quantity'],
                 data['Unit_price'],
                 data['Total_amount'],
                 data['Payment_method'],
-                data['Status'],
+                data['Abono'],
+                data['Added_Date'],
+                data['Order_date'],
                 data['Order_status'],
                 data['ID_Transaction']
             ))
