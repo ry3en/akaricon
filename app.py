@@ -333,6 +333,7 @@ def create_cart_transaction():
             if new_quantity < 0:
                 return jsonify({'error': 'Insufficient stock'}), 400
 
+            # Insert into CartTransactions
             query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Total_amount, Payment_method, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['ID_User'],
@@ -348,11 +349,10 @@ def create_cart_transaction():
             # Update product quantity
             cursor.execute("UPDATE Products SET Quantity = ? WHERE ID_Product = ?", (new_quantity, data['ID_Product']))
             conn.commit()
+
         return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
@@ -510,7 +510,7 @@ def create_ticket():
             # Actualizar las transacciones del carrito para asociarse con el ticket
             cursor.execute("""
                 UPDATE CartTransactions
-                SET ID_Ticket = ?
+                SET ID_ticket = ?
                 WHERE ID_Cart = ?
             """, (ticket_id, id_cart))
 
