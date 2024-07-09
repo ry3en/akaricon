@@ -490,9 +490,7 @@ def create_ticket():
             cursor = conn.cursor()
 
             # Calcular Pre_Price basado en los elementos del carrito
-            cursor.execute(
-                "SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_User = ? AND Order_status = 'Pendiente'",
-                (id_user,))
+            cursor.execute("SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_User = ? AND Order_status = 'Pendiente'", (id_user,))
             pre_price = cursor.fetchone()[0]
             final_price = pre_price  # Inicialmente, Final_Price es igual a Pre_Price
 
@@ -510,7 +508,12 @@ def create_ticket():
             conn.commit()
 
             # Obtener el ID del ticket recién insertado
-            cursor.execute("SELECT SCOPE_IDENTITY()")
+            cursor.execute("""
+                SELECT TOP 1 ID_ticket 
+                FROM Tickets 
+                WHERE ID_client = ? AND ID_user = ? 
+                ORDER BY Created_at DESC
+            """, (id_client, id_user))
             ticket_id = cursor.fetchone()[0]
 
             return jsonify({"ID_ticket": ticket_id}), 201
@@ -540,6 +543,8 @@ def update_cart_transactions():
             return jsonify({'status': 'Cart transactions updated'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
 
 
 if __name__ == '__main__':
