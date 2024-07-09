@@ -476,7 +476,6 @@ def create_ticket():
     data = request.json
     id_client = data.get('ID_client')
     id_user = data.get('ID_user')
-    id_cart = data.get('ID_Cart')
     id_code = data.get('ID_Code')
     issue_details = data.get('Issue_details')
 
@@ -488,8 +487,8 @@ def create_ticket():
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
-            # Calcular Pre_Price basado en los elementos del carrito
-            cursor.execute("SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_Cart = ?", (id_cart,))
+            # Calcular Pre_Price basado en los elementos del carrito en estado 'Pendiente'
+            cursor.execute("SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_User = ? AND Order_status = 'Pendiente'", (id_user,))
             pre_price = cursor.fetchone()[0]
             final_price = pre_price  # Inicialmente, Final_Price es igual a Pre_Price
 
@@ -501,26 +500,24 @@ def create_ticket():
 
             # Insertar el ticket en la base de datos
             cursor.execute("""
-                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Prev_Price, Final_Price)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (id_client, id_user, id_cart, id_code, issue_details, pre_price, final_price))
+                INSERT INTO Tickets (ID_client, ID_user, ID_Code, Issue_details, Prev_Price, Final_Price)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (id_client, id_user, id_code, issue_details, pre_price, final_price))
             cursor.execute("SELECT SCOPE_IDENTITY()")
             ticket_id = cursor.fetchone()[0]
 
-            # Actualizar las transacciones del carrito para asociarse con el ticket
+            # Actualizar las transacciones del carrito para asociarse con el ticket y cambiar el estado a 'Ticket'
             cursor.execute("""
                 UPDATE CartTransactions
-                SET ID_Ticket = ?
-                WHERE ID_Cart = ?
-            """, (ticket_id, id_cart))
+                SET ID_Ticket = ?, Order_status = 'Ticket'
+                WHERE ID_User = ? AND Order_status = 'Pendiente'
+            """, (ticket_id, id_user))
 
             conn.commit()
 
             return jsonify({"ID_ticket": ticket_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
-
-
 
 if __name__ == '__main__':
     app.run(debug=True)
