@@ -214,7 +214,6 @@ def update_product(product_id):
         return jsonify({'error': str(e)}), 500
 
 
-
 # Delete a product
 @app.route('/products/<int:product_id>', methods=['DELETE'])
 def delete_product(product_id):
@@ -309,6 +308,7 @@ def get_providers():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Create cart transaction
 @app.route('/carttransactions', methods=['POST'])
 def create_cart_transaction():
@@ -353,6 +353,7 @@ def create_cart_transaction():
         return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
@@ -470,6 +471,7 @@ def delete_notification(notification_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 # Create a ticket
 @app.route('/tickets', methods=['POST'])
 def create_ticket():
@@ -487,8 +489,10 @@ def create_ticket():
         with get_db_connection() as conn:
             cursor = conn.cursor()
 
-            # Calcular Pre_Price basado en los elementos del carrito en estado 'Pendiente'
-            cursor.execute("SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_User = ? AND Order_status = 'Pendiente'", (id_user,))
+            # Calcular Pre_Price basado en los elementos del carrito
+            cursor.execute(
+                "SELECT SUM(Total_amount) FROM CartTransactions WHERE ID_User = ? AND Order_status = 'Pendiente'",
+                (id_user,))
             pre_price = cursor.fetchone()[0]
             final_price = pre_price  # Inicialmente, Final_Price es igual a Pre_Price
 
@@ -500,28 +504,43 @@ def create_ticket():
 
             # Insertar el ticket en la base de datos
             cursor.execute("""
-                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Prev_Price, Final_Price)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """, (id_client, id_user, None, id_code, issue_details, pre_price, final_price))  # ID_Cart se deja como None inicialmente
+                INSERT INTO Tickets (ID_client, ID_user, ID_Code, Issue_details, Prev_Price, Final_Price)
+                VALUES (?, ?, ?, ?, ?, ?)
+            """, (id_client, id_user, id_code, issue_details, pre_price, final_price))
+            conn.commit()
+
+            # Obtener el ID del ticket recién insertado
             cursor.execute("SELECT SCOPE_IDENTITY()")
             ticket_id = cursor.fetchone()[0]
-
-            # Asegurarse de que se obtuvo un ID de ticket válido
-            if not ticket_id:
-                raise Exception("Failed to retrieve the ticket ID after insertion")
-
-            # Actualizar las transacciones del carrito para asociarse con el ticket y cambiar el estado a 'Ticket'
-            cursor.execute("""
-                UPDATE CartTransactions
-                SET ID_Ticket = ?, Order_status = 'Ticket'
-                WHERE ID_User = ? AND Order_status = 'Pendiente'
-            """, (ticket_id, id_user))
-
-            conn.commit()
 
             return jsonify({"ID_ticket": ticket_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+
+@app.route('/carttransactions/update', methods=['PUT'])
+def update_cart_transactions():
+    data = request.json
+    id_user = data.get('ID_user')
+    id_ticket = data.get('ID_ticket')
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Actualizar las transacciones del carrito para asociarse con el ticket y cambiar el estado
+            cursor.execute("""
+                UPDATE CartTransactions
+                SET ID_Ticket = ?, Order_status = 'Completado'
+                WHERE ID_User = ? AND Order_status = 'Pendiente'
+            """, (id_ticket, id_user))
+
+            conn.commit()
+
+            return jsonify({'status': 'Cart transactions updated'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 
 if __name__ == '__main__':
     app.run(debug=True)
