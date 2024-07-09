@@ -507,11 +507,19 @@ def create_ticket():
             cursor.execute("SELECT SCOPE_IDENTITY()")
             ticket_id = cursor.fetchone()[0]
 
+            # Actualizar las transacciones del carrito para asociarse con el ticket
+            cursor.execute("""
+                UPDATE CartTransactions
+                SET ID_Cart = ?
+                WHERE ID_Cart = ?
+            """, (ticket_id, id_cart))
+
             conn.commit()
 
             return jsonify({"ID_ticket": ticket_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 if __name__ == '__main__':
