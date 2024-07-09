@@ -363,8 +363,8 @@ def get_cart_transactions():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             if user_id:
-                query = "SELECT * FROM CartTransactions WHERE ID_User = ?"
-                cursor.execute(query, (user_id,))
+                query = "SELECT * FROM CartTransactions WHERE ID_User = ? AND Order_status = ?"
+                cursor.execute(query, (user_id, 'Pendiente'),)
             else:
                 query = "SELECT * FROM CartTransactions"
                 cursor.execute(query)
@@ -545,7 +545,44 @@ def update_cart_transactions():
         return jsonify({'error': str(e)}), 500
 
 
+@app.route('/tickets/<int:ticket_id>', methods=['GET'])
+def get_ticket_details(ticket_id):
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
 
+            # Obtener los detalles del ticket
+            cursor.execute("""
+                SELECT t.ID_ticket, t.ID_client, t.ID_user, t.Issue_details, t.Created_at, t.Updated_at, 
+                       t.ID_Code, t.Final_Price, t.Prev_Price, c.Name AS client_name, u.Username AS user_name
+                FROM Tickets t
+                LEFT JOIN Clients c ON t.ID_client = c.ID_client
+                LEFT JOIN Users u ON t.ID_user = u.ID_user
+                WHERE t.ID_ticket = ?
+            """, (ticket_id,))
+            ticket_details = cursor.fetchone()
+
+            if not ticket_details:
+                return jsonify({'error': 'Ticket not found'}), 404
+
+            # Convertir los resultados a un diccionario
+            ticket = dict(zip([column[0] for column in cursor.description], ticket_details))
+
+            # Obtener las transacciones del carrito asociadas con el ticket
+            cursor.execute("""
+                SELECT ct.ID_Transaction, ct.ID_User, ct.ID_Product, ct.Quantity, ct.Total_amount, ct.Payment_method,
+                       ct.Added_Date, ct.Order_date, ct.Order_status, p.Product_name
+                FROM CartTransactions ct
+                LEFT JOIN Products p ON ct.ID_Product = p.ID_product
+                WHERE ct.ID_Ticket = ?
+            """, (ticket_id,))
+            cart_transactions = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
+
+            ticket['cart_transactions'] = cart_transactions
+
+            return jsonify(ticket), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(debug=True)
