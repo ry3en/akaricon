@@ -584,5 +584,6 @@ def get_ticket_details(ticket_id):
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+
 if __name__ == '__main__':
     app.run(debug=True)
