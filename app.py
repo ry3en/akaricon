@@ -500,11 +500,15 @@ def create_ticket():
 
             # Insertar el ticket en la base de datos
             cursor.execute("""
-                INSERT INTO Tickets (ID_client, ID_user, ID_Code, Issue_details, Prev_Price, Final_Price)
-                VALUES (?, ?, ?, ?, ?, ?)
-            """, (id_client, id_user, id_code, issue_details, pre_price, final_price))
+                INSERT INTO Tickets (ID_client, ID_user, ID_Cart, ID_Code, Issue_details, Prev_Price, Final_Price)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, (id_client, id_user, None, id_code, issue_details, pre_price, final_price))  # ID_Cart se deja como None inicialmente
             cursor.execute("SELECT SCOPE_IDENTITY()")
             ticket_id = cursor.fetchone()[0]
+
+            # Asegurarse de que se obtuvo un ID de ticket válido
+            if not ticket_id:
+                raise Exception("Failed to retrieve the ticket ID after insertion")
 
             # Actualizar las transacciones del carrito para asociarse con el ticket y cambiar el estado a 'Ticket'
             cursor.execute("""
