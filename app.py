@@ -510,7 +510,7 @@ def create_ticket():
             # Actualizar las transacciones del carrito para asociarse con el ticket
             cursor.execute("""
                 UPDATE CartTransactions
-                SET ID_Cart = ?
+                SET ID_Ticket = ?
                 WHERE ID_Cart = ?
             """, (ticket_id, id_cart))
 
