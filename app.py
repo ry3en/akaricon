@@ -150,7 +150,7 @@ def create_product():
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
-            query = "INSERT INTO Products (Product_name, Quantity, Color, SKU, Ubi, Price_Sell, Price_Buy, Image_URL) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
+            query = "INSERT INTO Products (Product_name, Quantity, Color, SKU, Ubi, Price_Sell, Price_Buy, Image_URL) OUTPUT INSERTED.ID_Product VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
             cursor.execute(query, (
                 data['Product_name'],
                 data['Quantity'],
@@ -161,10 +161,12 @@ def create_product():
                 data['Price_Buy'],
                 data['Image_URL']
             ))
+            product_id = cursor.fetchone()[0]
             conn.commit()
-        return jsonify({'status': 'Product created'}), 201
+        return jsonify({'status': 'Product created', 'ID_Product': product_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 
 @app.route('/productcategory', methods=['POST'])
@@ -220,10 +222,17 @@ def delete_product(product_id):
     try:
         with get_db_connection() as conn:
             cursor = conn.cursor()
+
+            # Primero, eliminar las referencias del producto en ProductCategories
+            cursor.execute("DELETE FROM ProductCategories WHERE ID_Product = ?", (product_id,))
+
+            # Luego, eliminar el producto en sí de la tabla Products
             cursor.execute("DELETE FROM Products WHERE ID_Product = ?", (product_id,))
             conn.commit()
+
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Product not found'}), 404
+
             return jsonify({'status': f'Product with ID {product_id} deleted successfully'}), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
