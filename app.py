@@ -363,10 +363,19 @@ def get_cart_transactions():
         with get_db_connection() as conn:
             cursor = conn.cursor()
             if user_id:
-                query = "SELECT * FROM CartTransactions WHERE ID_User = ? AND Order_status = ?"
-                cursor.execute(query, (user_id, 'Pendiente'),)
+                query = """
+                    SELECT ct.*, p.Image_URL 
+                    FROM CartTransactions ct
+                    JOIN Products p ON ct.ID_Product = p.ID_Product
+                    WHERE ct.ID_User = ? AND ct.Order_status = ?
+                """
+                cursor.execute(query, (user_id, 'Pendiente'))
             else:
-                query = "SELECT * FROM CartTransactions"
+                query = """
+                    SELECT ct.*, p.Image_URL 
+                    FROM CartTransactions ct
+                    JOIN Products p ON ct.ID_Product = p.ID_Product
+                """
                 cursor.execute(query)
             transactions = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
         return jsonify(transactions)
@@ -583,6 +592,7 @@ def get_ticket_details(ticket_id):
             return jsonify(ticket), 200
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
 
 # Dashboard: Total Sales
 @app.route('/dashboard/total_sales', methods=['GET'])
