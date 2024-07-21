@@ -55,6 +55,25 @@ def create_provider():
         return jsonify({'error': str(e)}), 500
 
 
+# Create a promo code
+@app.route('/promocodes', methods=['POST'])
+def create_promo():
+    data = request.json
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+            query = "INSERT INTO PromotionalCodes (Code, Discount, ExpirationDate) VALUES (?, ?, ?)"
+            cursor.execute(query, (
+                data['Code'],
+                data['Discount'],
+                data['ExpirationDate']
+            ))
+            conn.commit()
+        return jsonify({'status': 'PromotionalCode created'}), 201
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
 # Create a client
 @app.route('/clients', methods=['POST'])
 def create_client():
