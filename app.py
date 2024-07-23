@@ -671,56 +671,6 @@ def get_top_clients():
         return jsonify({'error': str(e)}), 500
 
 
-# Dashboard: Total Sales
-@app.route('/dashboard/total_sales', methods=['GET'])
-def get_total_sales():
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("SELECT SUM(Total_amount) as Venta_Total FROM CartTransactions")
-            total_sales = cursor.fetchone()[0]
-            return jsonify({'Venta_Total': total_sales}), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# Dashboard: Top 10 Sold Items
-@app.route('/dashboard/top_items', methods=['GET'])
-def get_top_items():
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT TOP 10 ct.ID_Product, p.Product_name, COUNT(ct.ID_Product) as count
-                FROM CartTransactions ct
-                JOIN Products p ON ct.ID_Product = p.ID_product
-                GROUP BY ct.ID_Product, p.Product_name
-                ORDER BY count DESC
-            """)
-            top_items = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
-            return jsonify(top_items), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-# Dashboard: Top 10 Clients
-@app.route('/dashboard/top_clients', methods=['GET'])
-def get_top_clients():
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT TOP 10 t.ID_client, c.Name, COUNT(t.ID_client) as count
-                FROM Tickets t
-                JOIN Clients c ON t.ID_client = c.ID_client
-                GROUP BY t.ID_client, c.Name
-                ORDER BY count DESC
-            """)
-            top_clients = [dict(zip([column[0] for column in cursor.description], row)) for row in cursor.fetchall()]
-            return jsonify(top_clients), 200
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
 
 if __name__ == '__main__':
     app.run(debug=True)
