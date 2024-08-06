@@ -1,6 +1,6 @@
 from flask import Flask, request, jsonify
 from flask_jwt_extended import JWTManager, create_access_token, jwt_required, get_jwt_identity
-from datetime import timedelta
+from datetime import timedelta, datetime
 import pyodbc
 from werkzeug.security import check_password_hash, generate_password_hash
 
@@ -505,6 +505,49 @@ def delete_notification(notification_id):
             if cursor.rowcount == 0:
                 return jsonify({'error': 'Notification not found'}), 404
             return jsonify({'status': f'Notification with ID {notification_id} deleted successfully'}), 200
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+# Create a cart transaction
+@app.route('/cartTransaction', methods=['POST'])
+def create_cart_transaction():
+    data = request.json
+    id_user = data.get('ID_User')
+    id_product = data.get('ID_Product')
+    quantity = data.get('Quantity')
+    payment_method = data.get('Payment_method')
+    order_status = data.get('Order_status', 'Pendiente')
+
+    try:
+        with get_db_connection() as conn:
+            cursor = conn.cursor()
+
+            # Obtener el precio del producto
+            cursor.execute("SELECT Price_Sell FROM Products WHERE ID_product = ?", (id_product,))
+            price_sell = cursor.fetchone()[0]
+
+            # Calcular el monto total
+            total_amount = price_sell * quantity
+
+            # Insertar la transacción en la base de datos
+            cursor.execute("""
+                INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Total_amount, Payment_method, Order_date, Order_status)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+            id_user, id_product, quantity, total_amount, payment_method, datetime.utcnow(), order_status))
+            conn.commit()
+
+            # Obtener el ID de la transacción recién insertada
+            cursor.execute("""
+                SELECT TOP 1 ID_Transaction 
+                FROM CartTransactions 
+                WHERE ID_User = ? AND ID_Product = ? 
+                ORDER BY Added_Date DESC
+            """, (id_user, id_product))
+            transaction_id = cursor.fetchone()[0]
+
+            return jsonify({"ID_Transaction": transaction_id}), 201
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
