@@ -336,53 +336,6 @@ def get_providers():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-
-# Create cart transaction
-@app.route('/carttransactions', methods=['POST'])
-def create_cart_transaction():
-    data = request.json
-    try:
-        with get_db_connection() as conn:
-            cursor = conn.cursor()
-
-            # Verificar si ID_Product está presente en la solicitud
-            if 'ID_Product' not in data:
-                return jsonify({'error': 'ID_Product no está presente en la solicitud.'}), 400
-
-            # Check current stock
-            cursor.execute("SELECT Quantity FROM Products WHERE ID_Product = ?", (data['ID_Product'],))
-            product = cursor.fetchone()
-            if product is None:
-                return jsonify({'error': 'Product not found'}), 404
-
-            current_quantity = product[0]
-            new_quantity = current_quantity - data['Quantity']
-
-            if new_quantity < 0:
-                return jsonify({'error': 'Insufficient stock'}), 400
-
-            # Insert into CartTransactions
-            query = "INSERT INTO CartTransactions (ID_User, ID_Product, Quantity, Total_amount, Payment_method, Added_Date, Order_date, Order_status) VALUES (?, ?, ?, ?, ?, ?, ?, ?)"
-            cursor.execute(query, (
-                data['ID_User'],
-                data['ID_Product'],
-                data['Quantity'],
-                data['Total_amount'],
-                data['Payment_method'],
-                data['Added_Date'],
-                data['Order_date'],
-                data['Order_status']
-            ))
-
-            # Update product quantity
-            cursor.execute("UPDATE Products SET Quantity = ? WHERE ID_Product = ?", (new_quantity, data['ID_Product']))
-            conn.commit()
-
-        return jsonify({'status': 'Cart transaction created and product quantity updated'}), 201
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
 # Get cart transactions
 @app.route('/carttransactions', methods=['GET'])
 def get_cart_transactions():
