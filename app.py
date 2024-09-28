@@ -45,9 +45,7 @@ def create_provider():
             cursor = conn.cursor()
             query = "INSERT INTO Providers (Name, Address, Contact_info) VALUES (?, ?, ?)"
             cursor.execute(query, (
-                data['Name'],
-                data['Address'],
-                data['Contact_info']
+                data['Name']
             ))
             conn.commit()
         return jsonify({'status': 'Provider created'}), 201
