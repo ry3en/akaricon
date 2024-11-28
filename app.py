@@ -23,7 +23,6 @@ except Exception as e:
 def preprocess_image(image_bytes):
     """
     Preprocesa la imagen usando OpenCV para que coincida con el formato esperado por el modelo.
-    Ajusta estos parámetros según las necesidades de tu modelo específico.
     """
     # Convertir bytes a numpy array
     nparr = np.frombuffer(image_bytes, np.uint8)
