@@ -5,8 +5,6 @@ import numpy as np
 import cv2
 
 openai.api_key = "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"
-
-
 app = Flask(__name__)
 # Configura CORS para permitir todas las rutas y métodos desde localhost:3000
 
