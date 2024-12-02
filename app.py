@@ -2,33 +2,37 @@ from flask import Flask, request, jsonify
 import random
 import requests
 import tensorflow as tf
-from tensorflow.keras.models import load_model
 import numpy as np
-import openai
+import openai  # Use the old import style
+import os
 
+app = Flask(__name__)
+
+# Download and save models
 url = "https://huggingface.co/ry3en/tweet_emotion_detection/resolve/main/model_text.h5"
+url_img = "https://huggingface.co/ry3en/tweet_emotion_detection/resolve/main/model.h5"
+
 response = requests.get(url)
+response_img = requests.get(url_img)
 
 with open("model_text.h5", "wb") as f:
     f.write(response.content)
-
-url_img = "https://huggingface.co/ry3en/tweet_emotion_detection/resolve/main/model.h5"
-response_img = requests.get(url)
-
+    
 with open("model.h5", "wb") as f:
     f.write(response_img.content)
 
-# Configura tu clave de API de OpenAI
-openai.api_key = "TU_CLAVE_API_AQUI"
+# Load models
+try:
+    model_text = tf.keras.models.load_model("model_text.h5")
+    model_image = tf.keras.models.load_model("model.h5")
+except Exception as e:
+    print(f"Error loading models: {e}")
 
-# Cargar los modelos
-model_text = load_model("model_text.h5")
-model_image = load_model("model.h5")
+# Configure OpenAI (old style)
+openai.api_key = "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"
 
-# Definir emociones
+# Define emotions
 EMOTIONS = ['Enojo', 'Disgusto', 'Miedo', 'Felicidad', 'Tristeza', 'Sorpresa', 'Neutral']
-
-app = Flask(__name__)
 
 @app.route('/')
 def hello_world():
@@ -37,29 +41,29 @@ def hello_world():
 @app.route('/predict', methods=['POST'])
 def predict():
     try:
-        # Verificar que se envíen datos válidos
+        # Verify valid data
         if not request.json or 'text' not in request.json or 'image_data' not in request.json:
             return jsonify({'error': 'Se requiere texto y datos de imagen'}), 400
-        
+
         text = request.json['text']
-        image_data = request.json['image_data']  # Asume que es una cadena codificada en base64
+        image_data = request.json['image_data']
 
-        # Preprocesar texto e imagen (ajusta según los requisitos de tus modelos)
-        text_input = np.array([text])  # Supongamos que el modelo puede procesar texto sin tokenización
-        image_input = np.random.rand(1, 224, 224, 3)  # Sustituye con la decodificación de image_data
+        # Preprocess inputs
+        text_input = np.array([text])
+        image_input = np.random.rand(1, 224, 224, 3)  # Replace with actual image processing
 
-        # Obtener predicciones de los modelos
+        # Get predictions
         probs_text = model_text.predict(text_input)[0]
         probs_image = model_image.predict(image_input)[0]
 
-        # Seleccionar emociones con mayor probabilidad
+        # Select emotions
         emotion_text = EMOTIONS[np.argmax(probs_text)]
         emotion_image = EMOTIONS[np.argmax(probs_image)]
 
-        # Consultar ChatGPT para recomendaciones
+        # Get ChatGPT recommendation using old API style
         chatgpt_prompt = (
             f"Una persona está sintiendo {emotion_text} y {emotion_image}. "
-            "¿Qué recomendación le darías para manejar estas emociones?"
+            f"¿Qué recomendación le darías para manejar estas emociones?, esto escribio: {text_input}"
         )
 
         chatgpt_response = openai.Completion.create(
@@ -68,10 +72,9 @@ def predict():
             max_tokens=100
         )
 
-        # Extraer respuesta generada
         recommendation = chatgpt_response.choices[0].text.strip()
 
-        # Construir la respuesta
+        # Build response
         result = {
             'emotion_text': emotion_text,
             'emotion_image': emotion_image,
